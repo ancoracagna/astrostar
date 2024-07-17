@@ -5,9 +5,9 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 
-from app.builder import ref_code_key
+from app.builder import ref_code_key, ref_keys_builder
 from app.db.requests import get_all_users, get_today_users, get_all_users_lst, get_month_users, get_event_count, \
-    get_ref_market, create_ref_code
+    get_ref_market, create_ref_code, get_ref_lst
 from app.filters.main_filter import AdminProtect
 from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel
 from app.states import SendAllPic, SendAllText, Marketing, New_Ref
@@ -69,10 +69,33 @@ async def inline_refcode(callback: CallbackQuery):
     await callback.answer(f'Вы запросили статистику по ссылке: {ref_code}')
 
 
-@admin_router.callback_query(AdminProtect(), F.data == 'ref_code_lst')
+@admin_router.callback_query(AdminProtect(), F.data.startswith('ref_code_lst'))
 async def get_ref_codes(callback: CallbackQuery):
-    await callback.answer('Вы запросили список реферальных кодов')
-    # Здесь логика получения из бд + разбивать по 10 кодов, сделать переключение как в backet
+    page = 1  # Начинаем с первой страницы
+    await send_ref_list(callback, page)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('back_reflist_'))
+async def go_back(callback: CallbackQuery):
+    current_page = int(callback.data.split('_')[-1])
+    if current_page > 1:
+        await send_ref_list(callback, current_page - 1)
+    else:
+        await callback.answer('Вы на первой странице', show_alert=True)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('forward_reflist_'))
+async def go_forward(callback: CallbackQuery):
+    current_page = int(callback.data.split('_')[-1])
+    await send_ref_list(callback, current_page + 1)
+
+async def send_ref_list(callback: CallbackQuery, page: int):
+    ref_lst = await get_ref_lst(page)
+    if ref_lst:
+        await callback.message.edit_text(
+            'Список ссылок по дате по убыванию',
+            reply_markup=ref_keys_builder(ref_lst, page)
+        )
+    else:
+        await callback.answer('Больше нет элементов', show_alert=True)
 
 @admin_router.callback_query(AdminProtect(), F.data == 'manual_ref_search')
 async def manual_search(callback: CallbackQuery, state: FSMContext):

@@ -4,7 +4,8 @@ from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.types import Message, CallbackQuery, InputFile, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from app.db.requests import set_user, get_refs, get_user_data, add_ref, add_check, get_check, get_horoscope, reg_event
+from app.db.requests import (set_user, get_refs, get_user_data, add_ref, add_check, get_check, get_horoscope, reg_event,
+                             add_ref_event)
 from app.keyboards import userpanel, comp_panel, result
 from app.states import Compatibility
 from app.utils.utils import get_refer_id, gen_res, gen_unique
@@ -21,6 +22,12 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot):
     if user_info:
         response_text = f'{message.from_user.full_name}, Вижу что вы уже в моей базе данных. Приятного пользования ботом! 🥰'
         await message.answer(text=response_text, reply_markup=userpanel)
+        refer_id = get_refer_id(command.args)
+        if refer_id:
+            await add_ref_event(message.from_user.id, 'olduserstart', refer_id)
+        else:
+            refer_id = 0
+            await add_ref_event(message.from_user.id, 'olduserstart', refer_id)
     else:
         refer_id = get_refer_id(command.args)
         print(f'ref: {refer_id}')
@@ -31,6 +38,7 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot):
                                  'Перейдите в желаемый раздел и узнайте % совместимости прямо сейчас! 🚀🔭\n\n'
                                  f'Ваши звезды ждут! 🌠🌌 Пользователю: {refer_id} капнула звездочка за вас! ⭐️',
                                  reply_markup=userpanel)
+            await add_ref_event(message.from_user.id, 'newuser', refer_id)
         else:
             await message.answer('✨ Приветствуем вас! ✨\n\n'
                                  'Добро пожаловать в наш уникальный проект, где мы помогаем вам узнать, насколько вы совместимы с другими людьми, и составляем гороскопы. 🔮💫\n\n'
@@ -39,6 +47,7 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot):
                                  f'Ваши звезды ждут! 🌠🌌️',
                                  reply_markup=userpanel)
             refer_id = 0
+            await add_ref_event(message.from_user.id, 'newuser', refer_id)
         await set_user(message.from_user.id, refer_id)
         try:
             await add_ref(refer_id)

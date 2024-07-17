@@ -2,7 +2,8 @@ import random
 # достаем refer_id из команды /start
 import string
 
-from app.db.requests import get_ref_market, get_ref_price, get_today_refs, get_week_refs, get_month_refs, check_ref_code
+from app.db.requests import (get_ref_market, get_ref_price, get_today_refs, get_week_refs, get_month_refs,
+                             check_ref_code, get_ref_unique, get_all_ref_starts)
 
 
 def get_refer_id(command_args):
@@ -100,19 +101,25 @@ def gen_unique():
 async def get_ref_info(ref_name):
     if await check_ref_code(ref_name)!= 0:
         refs_all = await get_ref_market(ref_name)
+        all_refs_starts = await get_all_ref_starts(ref_name)
+        refs_unique = await get_ref_unique(ref_name)
         code_price = await get_ref_price(ref_name)
         refs_today = await get_today_refs(ref_name)
         refs_week = await get_week_refs(ref_name)
         refs_month = await get_month_refs(ref_name)
         print(f'refs_all: {refs_all} code_price: {code_price}')
-        if refs_all!=0:
-            ref_price = int(code_price) / int(refs_all)
+        if all_refs_starts!=0:
+            ref_price = int(code_price) / int(all_refs_starts)
         else:
             ref_price = 'Не измеримо'
+        if refs_unique!=0:
+            ref_unique_price = int(code_price) / int(refs_unique)
+        else:
+            ref_unique_price = 'Не измеримо'
         answer = (f'Название ссылки {ref_name}\n\n'
                              f'📊 Статистика: \n\n'
-                             f'* Всего перешли - {refs_all}\n'
-                             f'* Из них уникальны - {refs_all}\n'
+                             f'* Всего перешли - {all_refs_starts}\n'
+                             f'* Из них уникальны - {refs_unique}\n'
                              f'* Из них живы - {refs_all}\n'
                              f'* Подписались на ОП - 0\n\n'
                              f'⌛️ Статистика по времени\n\n'
@@ -122,7 +129,7 @@ async def get_ref_info(ref_name):
                              f'Цены\n\n'
                              f'* Цена ссылки - {code_price}\n'
                              f'* Цена за переход - {ref_price}\n'
-                             f'* Цена за уникального - {ref_price}\n'
+                             f'* Цена за уникального - {ref_unique_price}\n'
                              f'* Цена за подписчика (ОП) - 0\n\n'
                              f'Ссылка: https://t.me/astrostar_bot?start={ref_name}')
         return answer
