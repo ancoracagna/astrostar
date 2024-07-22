@@ -6,12 +6,13 @@ from app.db.models import async_main
 from app.db.requests import get_all_users
 from app.handlers.admin_handler import admin_router as admin
 from app.handlers.user_handler import router as user
+from app.handlers.comp_handler import router as compatibility
 
 from app.filters.main_filter import ADMINS as admins
 
 async def main():
 
-    dp.include_routers(admin, user)
+    dp.include_routers(admin, user, compatibility)
     dp.startup.register(on_startup)
     dp.shutdown.register(stop_bot)
     await dp.start_polling(bot)

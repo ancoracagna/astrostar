@@ -1,3 +1,5 @@
+import re
+
 from aiogram import Router, F, Bot
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
@@ -9,8 +11,8 @@ from app.builder import ref_code_key, ref_keys_builder
 from app.db.requests import get_all_users, get_today_users, get_all_users_lst, get_month_users, get_event_count, \
     get_ref_market, create_ref_code, get_ref_lst
 from app.filters.main_filter import AdminProtect
-from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel
-from app.states import SendAllPic, SendAllText, Marketing, New_Ref
+from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel, templatesend
+from app.states import SendAllPic, SendAllText, Marketing, New_Ref, BroadcastState
 from app.utils.utils import get_ref_info
 
 admin_router = Router()
@@ -58,14 +60,16 @@ async def setrefprice(message: Message, state: FSMContext):
     ref_price = ref_code["price"]
     if await create_ref_code(message.from_user.id, ref_name, ref_price)!=0:
         await message.answer(f'Ссылка {ref_name} успешно создана!', reply_markup=ref_code_key(ref_name))
+        await state.clear()
     else:
         await message.answer(f'Ссылка {ref_name} уже существует!')
+        await state.clear()
 
 @admin_router.callback_query(AdminProtect(), F.data.startswith('refcode_'))
 async def inline_refcode(callback: CallbackQuery):
     ref_code = callback.data.split('_')[1]
     answer = await get_ref_info(ref_code)
-    await callback.message.answer(answer)
+    await callback.message.answer(answer, parse_mode=ParseMode.MARKDOWN_V2)
     await callback.answer(f'Вы запросили статистику по ссылке: {ref_code}')
 
 
@@ -107,7 +111,7 @@ async def marketing_getinfo(message: Message, state: FSMContext):
     await state.update_data(ref_name=message.text)
     ref_code = await state.get_data()
     answer = await get_ref_info(ref_code["ref_name"])
-    await message.answer(answer)
+    await message.answer(answer, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 @admin_router.callback_query(AdminProtect(), F.data == 'stat')
@@ -193,3 +197,57 @@ async def sendall(message: Message, state: FSMContext, bot: Bot):
 async def back_to_panel(callback: CallbackQuery):
     await callback.answer('Вы успешно вернулись')
     await callback.message.edit_text('Вы зашли в панель администратора', reply_markup=adminpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data == 'sendtemplate')
+async def testmsg(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Перешлите шаблон')
+    await callback.message.answer('Перешлите сообщение для рассылки')
+    await state.set_state(BroadcastState.waiting_for_message)
+
+@admin_router.message(AdminProtect(), BroadcastState.waiting_for_message)
+async def sendformat(message: Message, state: FSMContext, bot: Bot):
+    await state.update_data(
+        message_id=message.message_id,
+        chat_id=message.chat.id,
+        content_type=message.content_type,
+        text=message.html_text if message.html_text else None,
+        photo=message.photo[-1].file_id if message.photo else None,
+        document=message.document.file_id if message.document else None,
+        reply_markup=message.reply_markup
+    )
+    # Отображение сообщения
+    if message.content_type == 'text':
+        await bot.send_message(chat_id=message.chat.id, text=message.html_text, parse_mode=ParseMode.HTML, reply_markup=message.reply_markup)
+    elif message.content_type == 'photo':
+        await bot.send_photo(chat_id=message.chat.id, photo=message.photo[-1].file_id, caption=message.html_text, parse_mode=ParseMode.HTML, reply_markup=message.reply_markup)
+    elif message.content_type == 'document':
+        await bot.send_document(chat_id=message.chat.id, document=message.document.file_id, caption=message.html_text, parse_mode=ParseMode.HTML, reply_markup=message.reply_markup)
+
+    await message.answer('Вы уверены, что хотите отправить это сообщение всем?', reply_markup=templatesend)
+    await state.set_state(BroadcastState.confirm_message)
+
+@admin_router.callback_query(AdminProtect(), BroadcastState.confirm_message, F.data == 'confirm_send')
+async def sendtemplate(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    all_users = await get_all_users_lst()
+    count = 0
+    for user_id in all_users:
+        try:
+            if data['content_type'] == 'text':
+                await bot.send_message(chat_id=user_id, text=data['text'], parse_mode=ParseMode.HTML, reply_markup=data['reply_markup'])
+            elif data['content_type'] == 'photo':
+                await bot.send_photo(chat_id=user_id, photo=data['photo'], caption=data['text'], parse_mode=ParseMode.HTML, reply_markup=data['reply_markup'])
+            elif data['content_type'] == 'document':
+                await bot.send_document(chat_id=user_id, document=data['document'], caption=data['text'], parse_mode=ParseMode.HTML, reply_markup=data['reply_markup'])
+            count += 1
+        except Exception as e:
+            print(f'Не удалось отправить сообщение пользователю {user_id}: {e}')
+
+    await callback.message.edit_text(f'Рассылка завершена! Сообщение отправлено {count} пользователям.')
+    await state.clear()
+
+@admin_router.callback_query(AdminProtect(), F.data == 'canceltemplate')
+async def canceltemplate(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Отмена')
+    await callback.message.edit_text('Вы отменили рассылку', reply_markup=adminpanel)
+    await state.clear()

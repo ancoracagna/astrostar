@@ -13,6 +13,7 @@ marketpanel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='
 
 apanelsendall = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='🖼 С картинкой', callback_data='sendallpic')],
                                                       [InlineKeyboardButton(text='✏️ Без картинки', callback_data='sendalltxt')],
+                                                      [InlineKeyboardButton(text='📝 По шаблону', callback_data='sendtemplate')],
                                                       [InlineKeyboardButton(text='◀️ Вернуться', callback_data='back')]])
 
 createbtn_kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Да', callback_data='create_btn')],
@@ -28,3 +29,15 @@ comp_panel = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Отменит�
 async def result(tg_id, desc):
     resultpanel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='💫 Узнать результат!', callback_data=f'result_{tg_id}_{desc}')]])
     return resultpanel
+
+templatesend = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Да', callback_data= 'confirm_send')],
+                                                     [InlineKeyboardButton(text='Нет', callback_data= 'canceltemplate')]])
+
+zodiakkb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='♈ Овен', callback_data='zodiak_aries'), InlineKeyboardButton(text='♉ Телец', callback_data='zodiak_taurus')],
+    [InlineKeyboardButton(text='♊ Близнецы', callback_data='zodiak_gemini'), InlineKeyboardButton(text='♋ Рак', callback_data='zodiak_cancer')],
+    [InlineKeyboardButton(text='♌ Лев', callback_data='zodiak_leo'), InlineKeyboardButton(text='♍ Дева', callback_data='zodiak_virgo')],
+    [InlineKeyboardButton(text='♎ Весы', callback_data='zodiak_libra'), InlineKeyboardButton(text='♏ Скорпион', callback_data='zodiak_scorpio')],
+    [InlineKeyboardButton(text='♐ Стрелец', callback_data='zodiak_sagittarius'), InlineKeyboardButton(text='♑ Козерог', callback_data='zodiak_capricorn')],
+    [InlineKeyboardButton(text='♒ Водолей', callback_data='zodiak_aquarius'), InlineKeyboardButton(text='♓ Рыбы', callback_data='zodiak_pisces')]
+])

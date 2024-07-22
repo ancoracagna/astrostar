@@ -3,9 +3,9 @@ from aiogram.fsm.state import State, StatesGroup
 
 class Compatibility(StatesGroup):
     firstinfo = State()
-    firstimg = State()
+    firstzodiak = State()
     secondinfo = State()
-    secondimg = State()
+    secondzodiak = State()
     result = State()
 
 class SendAllPic(StatesGroup):
@@ -21,3 +21,7 @@ class Marketing(StatesGroup):
 class New_Ref(StatesGroup):
     price = State()
     ref_name = State()
+
+class BroadcastState(StatesGroup):
+    waiting_for_message = State()
+    confirm_message = State()

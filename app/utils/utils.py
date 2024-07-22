@@ -1,5 +1,6 @@
 import random
 # достаем refer_id из команды /start
+import re
 import string
 
 from app.db.requests import (get_ref_market, get_ref_price, get_today_refs, get_week_refs, get_month_refs,
@@ -98,6 +99,10 @@ def gen_unique():
     return text
 
 
+def escape_markdown_v2(text):
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+
 async def get_ref_info(ref_name):
     if await check_ref_code(ref_name)!= 0:
         refs_all = await get_ref_market(ref_name)
@@ -116,22 +121,28 @@ async def get_ref_info(ref_name):
             ref_unique_price = int(code_price) / int(refs_unique)
         else:
             ref_unique_price = 'Не измеримо'
-        answer = (f'Название ссылки {ref_name}\n\n'
-                             f'📊 Статистика: \n\n'
-                             f'* Всего перешли - {all_refs_starts}\n'
-                             f'* Из них уникальны - {refs_unique}\n'
-                             f'* Из них живы - {refs_all}\n'
-                             f'* Подписались на ОП - 0\n\n'
-                             f'⌛️ Статистика по времени\n\n'
-                             f'* Сегодня - {refs_today}\n'
-                             f'* За последние 7 дней - {refs_week}\n'
-                             f'* За последние 30 дней - {refs_month}\n\n'
-                             f'Цены\n\n'
-                             f'* Цена ссылки - {code_price}\n'
-                             f'* Цена за переход - {ref_price}\n'
-                             f'* Цена за уникального - {ref_unique_price}\n'
-                             f'* Цена за подписчика (ОП) - 0\n\n'
-                             f'Ссылка: https://t.me/astrostar_bot?start={ref_name}')
+        link = 'https://t.me/astrostar_bot?start='+str(ref_name)
+        link = escape_markdown_v2(link)
+        ref_price = escape_markdown_v2(str(ref_price))
+        ref_unique_price = escape_markdown_v2(str(ref_unique_price))
+        code_price = escape_markdown_v2(code_price)
+        answer = (f'*Название ссылки* {ref_name}\n\n'
+                             f'📊 *Статистика*: \n\n'
+                             f'• Всего перешли \- {all_refs_starts}\n'
+                             f'• Из них уникальны \- {refs_unique}\n'
+                             f'• Из них живы \- {refs_all}\n'
+                             f'• Подписались на ОП \- 0\n\n'
+                             f'⌛️ *Статистика по времени*\n\n'
+                             f'• Сегодня \- {refs_today}\n'
+                             f'• За последние 7 дней \- {refs_week}\n'
+                             f'• За последние 30 дней \- {refs_month}\n\n'
+                             f'*Цены*\n\n'
+                             f'• Цена ссылки \- {code_price}\n'
+                             f'• Цена за переход \- {ref_price}\n'
+                             f'• Цена за уникального \- {ref_unique_price}\n'
+                             f'• Цена за подписчика \(ОП\) \- 0\n\n'
+                             f'Ссылка: {link}')
+        #answer = escape_markdown_v2(answer)
         return answer
     else:
         answer = f'Ссылки {ref_name} не существует, создайте ее для просмотра статистики'

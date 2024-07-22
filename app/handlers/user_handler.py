@@ -71,66 +71,6 @@ async def compatibility(message: Message, state: FSMContext):
 async def help(message: Message):
     await message.answer('По всем вопросам - @genesisup')
 
-@router.message(F.text == '👩‍❤️‍👨 Проверить совместимость')
-async def compatibility(message: Message, state: FSMContext):
-    await state.set_state(Compatibility.firstinfo)
-    await reg_event('Совместимость')
-    await message.answer('_Пример результата_\n_Повторные генерации одних и тех же людей могу давать искаженный результат_',parse_mode=ParseMode.MARKDOWN_V2)
-    await message.answer_photo(photo=FSInputFile('example.png'), caption=''
-                         '*Шаг 1: Информация о первом человеке*\n'
-                         'Пожалуйста, введите следующую информацию:\n\n'
-                         'Имя: ✏️\n'
-                         'Возраст: 📅\n'
-                         'Пол: 👤\n'
-                         'Знак зодиака: ♈♉♊♋♌♍♎♏♐♑♒♓\n\n'
-                         'Пример: `Виктор 21 М Весы` или `Снежана 16 Д ♐`', parse_mode=ParseMode.MARKDOWN_V2, reply_markup=comp_panel)
-
-@router.message(Compatibility.firstinfo)
-async def compatibility_2(message: Message, state: FSMContext):
-    await state.update_data(firstinfo=message.text)
-    await state.set_state(Compatibility.firstimg)
-    await message.answer('*Шаг 2: Пожалуйста, загрузите фотографию первого человека* 📸',parse_mode=ParseMode.MARKDOWN_V2)
-
-@router.message(Compatibility.firstimg)
-async def compatibility_3(message: Message, state: FSMContext):
-    if message.photo:
-        await state.update_data(firstimg=message.photo[-1].file_id)
-        await state.set_state(Compatibility.secondinfo)
-        await message.answer('*Шаг 3: Информация о втором человеке*\n'
-                             'Пожалуйста, введите следующую информацию:\n\n'
-                             'Имя: ✏️\n'
-                             'Возраст: 📅\n'
-                             'Пол: 👤\n'
-                             'Знак зодиака: ♈♉♊♋♌♍♎♏♐♑♒♓\n\n'
-                             'Пример: `Виктор 21 М Весы` или `Снежана 16 Д ♐`',parse_mode=ParseMode.MARKDOWN_V2, reply_markup=comp_panel)
-    else:
-        await message.answer('Вы отправили не фотографию, попробуйте еще раз или отмените проверку и вернитесь в меню')
-
-
-@router.message(Compatibility.secondinfo)
-async def compatibility_4(message: Message, state: FSMContext):
-    await state.update_data(secondinfo=message.text)
-    await message.answer('*Шаг 4: Пожалуйста, загрузите фотографию второго человека* 📸',parse_mode=ParseMode.MARKDOWN_V2)
-    await state.set_state(Compatibility.result)
-
-
-
-@router.message(Compatibility.result)
-async def compatibility_last(message: Message, state: FSMContext):
-    if message.photo:
-        await state.update_data(secondimg=message.photo[-1].file_id)
-        data = await state.get_data()
-        desc = str(data["firstinfo"]) + "_" + str(data["secondinfo"])
-        unique = gen_unique()
-        await message.answer_photo(photo=FSInputFile('result.png'),
-                                   caption=f'Информация о {data["firstinfo"]} и '
-                                   f'{data["secondinfo"]}', reply_markup= await result(message.from_user.id, unique))
-        res = gen_res()
-        await add_check(message.from_user.id, desc, res, unique)
-
-        await state.clear()
-    else:
-        await message.answer('Вы отправили не фотографию, попробуйте еще раз или отмените проверку и вернитесь в меню')
 
 @router.message(F.text=='🪐 Профиль')
 async def profile(message: Message):
