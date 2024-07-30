@@ -4,8 +4,11 @@ import re
 import string
 
 from app.db.requests import (get_ref_market, get_ref_price, get_today_refs, get_week_refs, get_month_refs,
-                             check_ref_code, get_ref_unique, get_all_ref_starts)
+                             check_ref_code, get_ref_unique, get_all_ref_starts, check_user_subs)
+from app.db.requests_op import get_op_data, check_bot_channel_admin, get_actual_op_full, \
+    switch_status_op_by_username
 
+from app.filters.main_filter import ADMINS as admins
 
 def get_refer_id(command_args):
     try:
@@ -105,7 +108,7 @@ def escape_markdown_v2(text):
 
 async def get_ref_info(ref_name):
     if await check_ref_code(ref_name)!= 0:
-        refs_all = await get_ref_market(ref_name)
+        refs_all = await get_ref_market(ref_name) # Можно все это заменить на 1 функцию, которая получает все эти данные
         all_refs_starts = await get_all_ref_starts(ref_name)
         refs_unique = await get_ref_unique(ref_name)
         code_price = await get_ref_price(ref_name)
@@ -113,14 +116,18 @@ async def get_ref_info(ref_name):
         refs_week = await get_week_refs(ref_name)
         refs_month = await get_month_refs(ref_name)
         print(f'refs_all: {refs_all} code_price: {code_price}')
-        if all_refs_starts!=0:
-            ref_price = int(code_price) / int(all_refs_starts)
+        if int(code_price) !=0:
+            if all_refs_starts!=0:
+                ref_price = int(code_price) / int(all_refs_starts)
+            else:
+                ref_price = 'Не измеримо'
+            if refs_unique!=0:
+                ref_unique_price = int(code_price) / int(refs_unique)
+            else:
+                ref_unique_price = 'Не измеримо'
         else:
-            ref_price = 'Не измеримо'
-        if refs_unique!=0:
-            ref_unique_price = int(code_price) / int(refs_unique)
-        else:
-            ref_unique_price = 'Не измеримо'
+            ref_price = '0'
+            ref_unique_price = '0'
         link = 'https://t.me/astrostar_bot?start='+str(ref_name)
         link = escape_markdown_v2(link)
         ref_price = escape_markdown_v2(str(ref_price))
@@ -147,3 +154,41 @@ async def get_ref_info(ref_name):
     else:
         answer = f'Ссылки {ref_name} не существует, создайте ее для просмотра статистики'
         return answer
+
+async def get_op_info(op_name):
+    name = op_name
+    data = await get_op_data(str(op_name))
+    print(data)
+    print(f'link: {data.op_link}')
+    count = 0
+    answer = (f'Название ОП кнопки: {name}\nНик: {data.op_username}\nСсылка: {data.op_link}\nКол-во подписок: {data.op_count}\nСтатус: {data.op_status}')
+    answer = escape_markdown_v2(answer)
+    return answer
+
+
+async def check_admin_channels(bot):
+    bad_lst = await check_bot_channel_admin(bot)
+    if not bad_lst:
+        answer = 'Бот админ во всех подключенных каналах для ОП. Бот функционирует правильно'
+    else:
+        answer = f'Список каналов, в которых бот не админ: {bad_lst}' # Предложить отключить их
+        for bad in bad_lst:
+            #bad = bad.replace('@', 't.me/')
+            await switch_status_op_by_username(bad)
+        answer += '\nОтключили от работы эти каналы, так как они нарушают работу бота'
+        for admin in admins:
+            await bot.send_message(admin,f'Список каналов, в которых бот не админ: {bad_lst}\nОтключили от работы эти каналы, так как они нарушают работу бота')
+
+async def check_user_subs_util(user, bot):
+    actual_ops = await get_actual_op_full()
+
+    need_to_sub = []
+    for op in actual_ops:
+        #link = str(op.op_link).replace('t.me/', '@')
+        link = str(op.op_username)
+        print(f'link: {link}')
+        channel = await check_user_subs(user, bot, link)
+        if channel:
+            need_to_sub.append(channel)
+
+    return need_to_sub

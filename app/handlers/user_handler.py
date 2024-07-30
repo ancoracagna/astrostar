@@ -4,11 +4,14 @@ from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.types import Message, CallbackQuery, InputFile, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+
+from app.builder import have_to_sub
 from app.db.requests import (set_user, get_refs, get_user_data, add_ref, add_check, get_check, get_horoscope, reg_event,
                              add_ref_event)
+from app.db.requests_op import get_settings_op_status
 from app.keyboards import userpanel, comp_panel, result
 from app.states import Compatibility
-from app.utils.utils import get_refer_id, gen_res, gen_unique
+from app.utils.utils import get_refer_id, gen_res, gen_unique, check_user_subs_util
 from app.filters.main_filter import ADMINS as admins
 
 router = Router()
@@ -79,10 +82,22 @@ async def profile(message: Message):
     await message.answer(f'👤 Пользователь: {message.from_user.full_name}\n⭐️ Кол-во звездочек: {refs}\n🔗 Ваша ссылка для привлечения: {link}')
 
 @router.message(F.text == '🔮 Гороскоп')
-async def horoscope(message: Message):
-    forecast = await get_horoscope()
-    await reg_event('Гороскоп')
-    await message.answer(f'Гороскоп на сегодня:\n\n{forecast}',parse_mode=ParseMode.MARKDOWN_V2)
+async def horoscope(message: Message, bot: Bot):
+    op_status = await get_settings_op_status()
+    if int(op_status) == 1:
+        need_to_sub = await check_user_subs_util(message.from_user.id, bot)
+        if need_to_sub:
+            await message.answer(
+                'Вам необходимо подписаться на следующие каналы для полного доступа, а затем перейти сюда еще раз',
+                reply_markup=await have_to_sub(message.from_user.id, bot))
+        if not need_to_sub:
+            forecast = await get_horoscope()
+            await reg_event('Гороскоп')
+            await message.answer(f'Гороскоп на сегодня:\n\n{forecast}',parse_mode=ParseMode.MARKDOWN_V2)
+    else:
+        forecast = await get_horoscope()
+        await reg_event('Гороскоп')
+        await message.answer(f'Гороскоп на сегодня:\n\n{forecast}', parse_mode=ParseMode.MARKDOWN_V2)
 
 @router.callback_query(F.data.startswith('result_'))
 async def get_result(callback: CallbackQuery):

@@ -3,13 +3,22 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
 adminpanel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='📊 Статистика', callback_data= 'stat')],
                                    [InlineKeyboardButton(text='📤 Рассылка', callback_data= 'sendall')],
                                    [InlineKeyboardButton(text='👥 Пользователи', callback_data='users')],
-                                   [InlineKeyboardButton(text='💸 Маркетинг', callback_data='marketing')]])
+                                   [InlineKeyboardButton(text='💸 Маркетинг', callback_data='marketing')],
+                                   [InlineKeyboardButton(text='🛠 Глобальные настройки', callback_data='admin_settings')]])
+
 
 apanelback = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='◀️ Вернуться', callback_data='back')]])
+
+mpanel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Реферальные ссылки', callback_data='refs_menu')],
+                                               [InlineKeyboardButton(text='ОП', callback_data='op_menu')]])
 
 marketpanel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='🔗 Создать ссылку', callback_data= 'create_ref_code')],
                                                     [InlineKeyboardButton(text='📋 Список ссылок', callback_data= 'ref_code_lst')],
                                                     [InlineKeyboardButton(text='✏️ Ввести вручную', callback_data= 'manual_ref_search')]])
+
+op_panel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Создать ОП кнопку', callback_data='create_op')],
+                                                 [InlineKeyboardButton(text='Список ОП кнопок', callback_data='oplist')],
+                                                 [InlineKeyboardButton(text='◀️ Вернуться', callback_data='back')]])
 
 apanelsendall = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='🖼 С картинкой', callback_data='sendallpic')],
                                                       [InlineKeyboardButton(text='✏️ Без картинки', callback_data='sendalltxt')],
@@ -41,3 +50,6 @@ zodiakkb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='♐ Стрелец', callback_data='zodiak_sagittarius'), InlineKeyboardButton(text='♑ Козерог', callback_data='zodiak_capricorn')],
     [InlineKeyboardButton(text='♒ Водолей', callback_data='zodiak_aquarius'), InlineKeyboardButton(text='♓ Рыбы', callback_data='zodiak_pisces')]
 ])
+
+op_create_kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Да', callback_data='createopbtn')],
+                                                     [InlineKeyboardButton(text='Нет', callback_data='cancelopbtn')]])

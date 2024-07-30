@@ -65,6 +65,26 @@ class Ref_Code(Base):
     price: Mapped[str] = mapped_column(String)
     date: Mapped[str] = mapped_column(String)
 
+class OP(Base):
+    __tablename__ = 'ops'
+
+    id:Mapped[int] = mapped_column(primary_key=True)
+    tg_id = mapped_column(BigInteger) # Кто создал
+    op_name: Mapped[str] = mapped_column(String)
+    op_username: Mapped[str] = mapped_column(String)
+    op_link: Mapped[str] = mapped_column(String)
+    op_status: Mapped[str] = mapped_column(String)
+    op_count: Mapped[int]
+    op_date: Mapped[str] = mapped_column(String)
+    op_tgs: Mapped[str] = mapped_column(String) # список telegram_id из бота, которые подписались
+
+class Setting(Base):
+    __tablename__ = 'settings'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    op_enabled: Mapped[int]
+    reff_enabled: Mapped[int]
+
 async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

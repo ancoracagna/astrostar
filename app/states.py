@@ -25,3 +25,8 @@ class New_Ref(StatesGroup):
 class BroadcastState(StatesGroup):
     waiting_for_message = State()
     confirm_message = State()
+
+class OP_State(StatesGroup):
+    link = State()
+    name = State()
+    username = State()

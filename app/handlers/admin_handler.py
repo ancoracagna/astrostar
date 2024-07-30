@@ -7,13 +7,18 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 
-from app.builder import ref_code_key, ref_keys_builder
+from app.builder import ref_code_key, ref_keys_builder, op_builder, op_keys_builder, op_switch_kb, settingbuilder, \
+    have_to_sub
 from app.db.requests import get_all_users, get_today_users, get_all_users_lst, get_month_users, get_event_count, \
     get_ref_market, create_ref_code, get_ref_lst
+from app.db.requests_op import create_op, get_op_lst, switch_status_op, delete_op_req, \
+    check_bot_channel_admin, switch_status_op_by_username, switch_settings_op
+from app.db.requests_ref import switch_settings_ref
 from app.filters.main_filter import AdminProtect
-from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel, templatesend
-from app.states import SendAllPic, SendAllText, Marketing, New_Ref, BroadcastState
-from app.utils.utils import get_ref_info
+from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel, templatesend, op_create_kb, mpanel, \
+    op_panel
+from app.states import SendAllPic, SendAllText, Marketing, New_Ref, BroadcastState, OP_State
+from app.utils.utils import get_ref_info, get_op_info, check_admin_channels, check_user_subs_util
 
 admin_router = Router()
 
@@ -36,7 +41,17 @@ async def sendall(message: Message, command: Command):
 @admin_router.callback_query(AdminProtect(), F.data == 'marketing')
 async def marketing(callback: CallbackQuery):
     await callback.answer('Вы перешли в раздел маркетинг')
-    await callback.message.edit_text('Выберите меню из списка', reply_markup = marketpanel)
+    await callback.message.edit_text('Выберите меню из списка', reply_markup = mpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data == 'refs_menu')
+async def mpaneld(callback: CallbackQuery):
+    await callback.answer('Успешно')
+    await callback.message.edit_text('Выберите меню из списка', reply_markup=marketpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data == 'op_menu')
+async def oppanel(callback: CallbackQuery):
+    await callback.answer('Успешно')
+    await callback.message.edit_text('Выберите меню из списка', reply_markup=op_panel)
 
 @admin_router.callback_query(AdminProtect(), F.data == 'create_ref_code')
 async def create_refcode(callback: CallbackQuery, state: FSMContext):
@@ -251,3 +266,144 @@ async def canceltemplate(callback: CallbackQuery, state: FSMContext):
     await callback.answer('Отмена')
     await callback.message.edit_text('Вы отменили рассылку', reply_markup=adminpanel)
     await state.clear()
+
+@admin_router.callback_query(AdminProtect(), F.data == 'create_op')
+async def addop(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Вы перешли в раздел создания ОП')
+    await callback.message.edit_text('Введите имя кнопки')
+    await state.set_state(OP_State.name)
+
+@admin_router.message(AdminProtect(), OP_State.name)
+async def opname(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await message.answer('Теперь пришлите username канала в формате @skazgoro')
+    await state.set_state(OP_State.username)
+
+@admin_router.message(AdminProtect(), OP_State.username)
+async def setopusername(message: Message, state: FSMContext):
+    await state.update_data(username=message.text)
+    await message.answer('Теперь пришлите ссылку формата https://t.me/+PjDRRsNifus4ZmQy')
+    await state.set_state(OP_State.link)
+
+@admin_router.message(AdminProtect(), OP_State.link)
+async def oplink(message: Message, state: FSMContext):
+    await state.update_data(link=message.text)
+    data = await state.get_data()
+    name = data["name"]
+    link = data["link"]
+    await message.answer('Готовая кнопка',reply_markup=op_builder(name, link))
+    await message.answer('Все верно?', reply_markup=op_create_kb)
+
+@admin_router.callback_query(AdminProtect(), F.data=='createopbtn')
+async def opcreate(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    name = data["name"]
+    username = data["username"]
+    link = data["link"]
+    tg_id = callback.from_user.id
+    await create_op(tg_id, name, username, link)
+    await state.clear()
+    await callback.answer('Успешно')
+    await callback.message.answer('Успешное создание кнопки, активируйте ее в меню при необходимости\n'
+                                  'А так же добавьте бота в администраторы этого канала')
+
+@admin_router.callback_query(AdminProtect(), F.data == 'cancelopbtn')
+async def opcancel(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Отмена')
+    await callback.message.answer('Операция создания OP отменена')
+    await state.clear()
+
+## ---- Все меняем под список OP
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('op_'))
+async def inline_refcode(callback: CallbackQuery):
+    op = callback.data.split('_')[1]
+    try:
+        answer = await get_op_info(op)
+        await callback.message.answer(answer, reply_markup=await op_switch_kb(op), parse_mode=ParseMode.MARKDOWN_V2) # , parse_mode=ParseMode.MARKDOWN_V2
+        await callback.answer(f'Вы запросили статистику по ссылке: {op}')
+    except:
+        await callback.answer('Неудачно')
+        await callback.message.answer('Ошибка! Возможно запрашиваемой ссылки не существует..', reply_markup=adminpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('switch_'))
+async def switch_func(callback: CallbackQuery):
+    name = callback.data.split('_')[1]
+    try:
+        await switch_status_op(name)
+        await callback.answer('Успешно изменили статус!')
+        answer = await get_op_info(name)
+        await callback.message.edit_text(answer, reply_markup=await op_switch_kb(name),
+                                      parse_mode=ParseMode.MARKDOWN_V2)  # , parse_mode=ParseMode.MARKDOWN_V2
+    except:
+        await callback.answer('Неудачно')
+        await callback.message.answer('Ошибка! Возможно запрашиваемой ссылки не существует..', reply_markup=adminpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('delete_'))
+async def delete_op(callback: CallbackQuery):
+    name = callback.data.split('_')[1]
+    await delete_op_req(name)
+    await callback.message.edit_text('Успешное удаление ссылки, возвращаемся в главное меню!', reply_markup=adminpanel)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('oplist'))
+async def get_ref_codes(callback: CallbackQuery):
+    page = 1  # Начинаем с первой страницы
+    await send_op_list(callback, page)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('back_oplist_'))
+async def go_back(callback: CallbackQuery):
+    current_page = int(callback.data.split('_')[-1])
+    if current_page > 1:
+        await send_op_list(callback, current_page - 1)
+    else:
+        await callback.answer('Вы на первой странице', show_alert=True)
+
+@admin_router.callback_query(AdminProtect(), F.data.startswith('forward_oplist_'))
+async def go_forward(callback: CallbackQuery):
+    current_page = int(callback.data.split('_')[-1])
+    await send_op_list(callback, current_page + 1)
+
+async def send_op_list(callback: CallbackQuery, page: int):
+    op_lst = await get_op_lst(page)
+    if op_lst:
+        await callback.message.edit_text(
+            'Список ссылок по дате по убыванию',
+            reply_markup=op_keys_builder(op_lst, page)
+        )
+    else:
+        await callback.answer('Больше нет элементов', show_alert=True)
+
+@admin_router.message(F.text == 'Проверка')
+async def check_admin(message: Message, bot: Bot):
+    need_to_sub = await check_user_subs_util(message.from_user.id, bot)
+    if need_to_sub:
+        await message.answer('Вам необходимо подписаться на следующие каналы для полного доступа, а затем перейти сюда еще раз',
+                             reply_markup= await have_to_sub(message.from_user.id, bot))
+    if not need_to_sub:
+        await message.answer('Поздравляем! У вас полный доступ!')
+@admin_router.callback_query(AdminProtect(), F.data == 'admin_settings')
+async def settingsmenu(callback: CallbackQuery):
+    await callback.answer('Вы перешли в настройки')
+    await callback.message.answer('Выберите раздел\n\n', reply_markup=await settingbuilder())
+
+@admin_router.callback_query(AdminProtect(), F.data== 'check_channels_admin')
+async def check_channels_admin(callback: CallbackQuery, bot: Bot):
+    await callback.answer('Началась проверка каналов')
+    answer = await check_admin_channels(bot)
+    print(f'answer: {answer}')
+    if answer:
+        await callback.message.answer(answer)
+    if not answer:
+        await callback.message.answer('Во всех активных каналах бот администратор')
+
+@admin_router.callback_query(AdminProtect(), F.data == 'switchref')
+async def switch_settings_ref_def(callback: CallbackQuery):
+    await switch_settings_ref()
+    await callback.answer('Успешное изменение!')
+    await callback.message.edit_text('Выберите раздел\n\n', reply_markup=await settingbuilder())
+
+@admin_router.callback_query(AdminProtect(), F.data == 'switchop')
+async def switch_settings_op_def(callback: CallbackQuery):
+    await switch_settings_op()
+    await callback.answer('Успешное изменение!')
+    await callback.message.edit_text('Выберите раздел\n\n', reply_markup=await settingbuilder())
