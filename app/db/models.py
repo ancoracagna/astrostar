@@ -22,6 +22,9 @@ class User(Base):
     refs: Mapped[int]
     refer_id: Mapped[str] = mapped_column(String)
     date: Mapped[str] = mapped_column(String)
+    op_complete: Mapped[int]
+    # Добавить новое поле - op_complete и изначально давать ему 0, когда выполнит - 1, потом спарсить
+    # всех, у кого 1 и рефер id - тот самый
 
 class Check(Base):
     __tablename__ = 'checks'
@@ -64,6 +67,7 @@ class Ref_Code(Base):
     ref_name: Mapped[str] = mapped_column(String)
     price: Mapped[str] = mapped_column(String)
     date: Mapped[str] = mapped_column(String)
+    users_op: Mapped[str] = mapped_column(String)
 
 class OP(Base):
     __tablename__ = 'ops'

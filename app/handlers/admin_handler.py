@@ -10,10 +10,10 @@ from aiogram.fsm.state import State
 from app.builder import ref_code_key, ref_keys_builder, op_builder, op_keys_builder, op_switch_kb, settingbuilder, \
     have_to_sub
 from app.db.requests import get_all_users, get_today_users, get_all_users_lst, get_month_users, get_event_count, \
-    get_ref_market, create_ref_code, get_ref_lst
+    get_ref_market, create_ref_code, get_ref_lst, get_user_opstatus
 from app.db.requests_op import create_op, get_op_lst, switch_status_op, delete_op_req, \
     check_bot_channel_admin, switch_status_op_by_username, switch_settings_op
-from app.db.requests_ref import switch_settings_ref
+from app.db.requests_ref import switch_settings_ref, get_ops_list, add_user_op_toref
 from app.filters.main_filter import AdminProtect
 from app.keyboards import adminpanel, apanelback, apanelsendall, marketpanel, templatesend, op_create_kb, mpanel, \
     op_panel
@@ -407,3 +407,13 @@ async def switch_settings_op_def(callback: CallbackQuery):
     await switch_settings_op()
     await callback.answer('Успешное изменение!')
     await callback.message.edit_text('Выберите раздел\n\n', reply_markup=await settingbuilder())
+
+
+@admin_router.message(AdminProtect(), F.text == 'Тест')
+async def admin_check(message: Message):
+    op_status = await get_user_opstatus(message.from_user.id)
+    await message.answer(f'op_status: {op_status}')
+    ops_list = await get_ops_list('UGAR')
+    await message.answer(f'ops_list: {ops_list}')
+    ops_list = await add_user_op_toref(message.from_user.id, 'UGAR')
+    await message.answer(f'ops_list: {ops_list}')

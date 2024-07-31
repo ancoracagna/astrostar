@@ -7,6 +7,7 @@ from app.db.requests import (get_ref_market, get_ref_price, get_today_refs, get_
                              check_ref_code, get_ref_unique, get_all_ref_starts, check_user_subs)
 from app.db.requests_op import get_op_data, check_bot_channel_admin, get_actual_op_full, \
     switch_status_op_by_username
+from app.db.requests_ref import get_all_refs_starts, get_refs_unique, get_op_users
 
 from app.filters.main_filter import ADMINS as admins
 
@@ -109,8 +110,11 @@ def escape_markdown_v2(text):
 async def get_ref_info(ref_name):
     if await check_ref_code(ref_name)!= 0:
         refs_all = await get_ref_market(ref_name) # Можно все это заменить на 1 функцию, которая получает все эти данные
-        all_refs_starts = await get_all_ref_starts(ref_name)
-        refs_unique = await get_ref_unique(ref_name)
+        #all_refs_starts = await get_all_ref_starts(ref_name)
+        all_refs_starts = await get_all_refs_starts(ref_name)
+        #refs_unique = await get_ref_unique(ref_name)
+        refs_unique = await get_refs_unique(ref_name)
+        refs_op = await get_op_users(ref_name)
         code_price = await get_ref_price(ref_name)
         refs_today = await get_today_refs(ref_name)
         refs_week = await get_week_refs(ref_name)
@@ -125,6 +129,10 @@ async def get_ref_info(ref_name):
                 ref_unique_price = int(code_price) / int(refs_unique)
             else:
                 ref_unique_price = 'Не измеримо'
+            if refs_op!=0:
+                refs_op_price = int(code_price) / int(refs_op)
+            else:
+                refs_op_price = 'Не измеримо'
         else:
             ref_price = '0'
             ref_unique_price = '0'
@@ -132,13 +140,14 @@ async def get_ref_info(ref_name):
         link = escape_markdown_v2(link)
         ref_price = escape_markdown_v2(str(ref_price))
         ref_unique_price = escape_markdown_v2(str(ref_unique_price))
+        refs_op_price = escape_markdown_v2(str(refs_op_price))
         code_price = escape_markdown_v2(code_price)
         answer = (f'*Название ссылки* {ref_name}\n\n'
                              f'📊 *Статистика*: \n\n'
-                             f'• Всего перешли \- {all_refs_starts}\n'
-                             f'• Из них уникальны \- {refs_unique}\n'
-                             f'• Из них живы \- {refs_all}\n'
-                             f'• Подписались на ОП \- 0\n\n'
+                             f'• Всего перешли \- {all_refs_starts}\n' # Всего перешли (старые + новые по 1 разу)
+                             f'• Из них уникальны \- {refs_unique}\n' # Берем ивент просто уникальных
+                             #f'• Из них живы \- {refs_all}\n'
+                             f'• Подписались на ОП \- {refs_op}\n\n'
                              f'⌛️ *Статистика по времени*\n\n'
                              f'• Сегодня \- {refs_today}\n'
                              f'• За последние 7 дней \- {refs_week}\n'
@@ -147,7 +156,7 @@ async def get_ref_info(ref_name):
                              f'• Цена ссылки \- {code_price}\n'
                              f'• Цена за переход \- {ref_price}\n'
                              f'• Цена за уникального \- {ref_unique_price}\n'
-                             f'• Цена за подписчика \(ОП\) \- 0\n\n'
+                             f'• Цена за подписчика \(ОП\) \- {refs_op_price}\n\n'
                              f'Ссылка: {link}')
         #answer = escape_markdown_v2(answer)
         return answer

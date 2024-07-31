@@ -7,8 +7,9 @@ from aiogram.fsm.state import State, StatesGroup
 
 from app.builder import have_to_sub
 from app.db.requests import (set_user, get_refs, get_user_data, add_ref, add_check, get_check, get_horoscope, reg_event,
-                             add_ref_event)
+                             add_ref_event, get_user_opstatus, change_user_opstatus)
 from app.db.requests_op import get_settings_op_status
+from app.db.requests_ref import add_user_op_toref, get_user_ref
 from app.keyboards import userpanel, comp_panel, result
 from app.states import Compatibility
 from app.utils.utils import get_refer_id, gen_res, gen_unique, check_user_subs_util
@@ -26,10 +27,10 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot):
         response_text = f'{message.from_user.full_name}, Вижу что вы уже в моей базе данных. Приятного пользования ботом! 🥰'
         await message.answer(text=response_text, reply_markup=userpanel)
         refer_id = get_refer_id(command.args)
-        if refer_id:
+        if refer_id: # Если есть рефер, но пользователь уже в системе
             await add_ref_event(message.from_user.id, 'olduserstart', refer_id)
         else:
-            refer_id = 0
+            refer_id = 0 # Если нет рефера, но пользователь уже в системе
             await add_ref_event(message.from_user.id, 'olduserstart', refer_id)
     else:
         refer_id = get_refer_id(command.args)
@@ -91,6 +92,13 @@ async def horoscope(message: Message, bot: Bot):
                 'Вам необходимо подписаться на следующие каналы для полного доступа, а затем перейти сюда еще раз',
                 reply_markup=await have_to_sub(message.from_user.id, bot))
         if not need_to_sub:
+            # Вот здесь необходимо реализовать логику
+            op_status = await get_user_opstatus(message.from_user.id)
+            if op_status == 0:
+                user = message.from_user.id
+                await change_user_opstatus(user) # Вот тут меняем op_status на 1, а так же заносим этот тг id в список по рефке
+                ref_name = await get_user_ref(user)
+                await add_user_op_toref(user, ref_name)
             forecast = await get_horoscope()
             await reg_event('Гороскоп')
             await message.answer(f'Гороскоп на сегодня:\n\n{forecast}',parse_mode=ParseMode.MARKDOWN_V2)

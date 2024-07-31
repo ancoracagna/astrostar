@@ -17,9 +17,25 @@ async def set_user(tg_id, refer_id):
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
 
         if not user:
-            session.add(User(tg_id=tg_id, refs=0, refer_id=str(refer_id), date=d1))
+            session.add(User(tg_id=tg_id, refs=0, refer_id=str(refer_id), date=d1, op_complete=0)) # Создать метод
+            # когда меняется и добавлять этот tg_id в список, а потом брать его count,
+            # а в прайс просто делить на него, если он не 0
             await session.commit()
 
+async def get_user_opstatus(tg_id):
+    async with async_session() as session:
+        user = await session.scalar(select(User.op_complete).where(User.tg_id == tg_id))
+        return user
+
+async def change_user_opstatus(tg_id):
+    async with async_session() as session:
+        user_update = (
+            update(User)
+                .where(User.tg_id == tg_id)
+                .values(op_complete=1)
+        )
+        await session.execute(user_update)
+        await session.commit()
 
 async def add_ref_event(tg_id, event, ref_name):
     async with async_session() as session:
@@ -142,7 +158,7 @@ async def create_ref_code(tg_id, ref_name, price):
         d1 = today.strftime("%d/%m/%Y")
         ref = await session.scalar(select(Ref_Code).where(Ref_Code.ref_name == ref_name))
         if not ref:
-            session.add(Ref_Code(tg_id=tg_id, ref_name=ref_name, price=price, date=d1))
+            session.add(Ref_Code(tg_id=tg_id, ref_name=ref_name, price=price, date=d1, users_op='0'))
             await session.commit()
         else:
             return 0
